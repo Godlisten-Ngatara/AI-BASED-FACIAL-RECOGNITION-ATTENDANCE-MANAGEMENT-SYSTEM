@@ -1,3 +1,5 @@
-MODEL_PATH = "models/yolo11n.pt"
-TRAIN_DIR = "dataset/train"
-TEST_IMAGE = "dataset/test/gody2.jpg"
+import os
+
+KNOWN_FACES_DIR = os.path.abspath(os.path.join("..", "dataset", "Known_faces"))
+CAPTURED_IMAGES_DIR = os.path.abspath(os.path.join("..", "dataset", "Captured_images"))
+MODEL_PATH = os.path.abspath(os.path.join("..", "models", "yolo11n.pt"))

@@ -1,6 +1,6 @@
 import os
 import face_recognition
-
+import numpy as np
 def load_known_faces(train_dir):
     embeddings = []
     names = []
@@ -17,7 +17,6 @@ def load_known_faces(train_dir):
     return embeddings, names
 
 def identify_face(face_encoding, known_encodings, known_names):
-    import numpy as np
     matches = face_recognition.compare_faces(known_encodings, face_encoding)
     distances = face_recognition.face_distance(known_encodings, face_encoding)
     if not distances.any():
