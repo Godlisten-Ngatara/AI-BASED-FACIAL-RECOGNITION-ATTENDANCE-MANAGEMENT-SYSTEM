@@ -64,11 +64,6 @@ def save_image_to_folder(base64_image_data, folder_path):
         print(f"Failed to save image: {e}")
         return None
 
-        return filepath
-    except Exception as e:
-        print(f"Failed to save image: {e}")
-        return None
-
 
 # Define camera Capture function
 def cameraCapture():

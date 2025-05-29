@@ -3,9 +3,7 @@ import os
 import sys
 
 sys.path.append(
-    os.path.abspath(
-        r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM"
-    )
+    os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
 )
 from yolo_face_recognition.image_queue import image_queue
 from camera_manager_service.utils import send_api_request
@@ -18,6 +16,7 @@ from cameraCapture import (
 RUN_DURATION = 15 * 60  # 15 minutes in seconds
 
 start_time = time.time()
+
 
 def move_to_preset(camera_index_code: str, preset_index: int):
     path = "/artemis/api/video/v1/ptzs/controlling"
@@ -43,6 +42,7 @@ def move_to_preset(camera_index_code: str, preset_index: int):
     else:
         print(f"Failed to move to preset {preset_index}.")
 
+
 def patrol_with_capture(camera_index_code: str, patrol_schedule: list):
     while True:
         try:
@@ -58,7 +58,8 @@ def patrol_with_capture(camera_index_code: str, patrol_schedule: list):
             print(f"PTZ error: {e}")
     print(f"Patrol stopped after {RUN_DURATION}")
 
+
 # Define your patrol schedule (customize as needed)
 
 # Run the patrol
- # optional pause before restarting the whole patrol
+# optional pause before restarting the whole patrol
