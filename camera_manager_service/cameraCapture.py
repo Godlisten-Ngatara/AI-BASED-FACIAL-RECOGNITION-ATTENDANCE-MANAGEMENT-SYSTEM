@@ -7,7 +7,6 @@ sys.path.append(
 from camera_manager_service.utils import send_api_request
 from camera_manager_service.config import host, app_key, secret_key
 from camera_manager_service.signature import Signature
-from yolo_face_recognition.image_queue import image_queue
 
 # Modify this with your desired folder path later
 IMAGE_SAVE_DIR = os.path.abspath(
@@ -26,7 +25,7 @@ os.makedirs(IMAGE_SAVE_DIR, exist_ok=True)
 # Function to send the image_path to the recognition end point using post
 def send_image_path_to_recognition(filepath: str):
     recognition_api_url = (
-        "http://127.0.0.1:8001/recognition/recognize"  # Change port/url accordingly
+        "http://127.0.0.1:8001/api/v1/recognition/recognize"  # Change port/url accordingly
     )
     payload = {"image_path": filepath}
     try:

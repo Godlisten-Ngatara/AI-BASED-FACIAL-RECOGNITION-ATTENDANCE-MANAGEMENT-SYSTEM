@@ -5,7 +5,6 @@ import sys
 sys.path.append(
     os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
 )
-from yolo_face_recognition.image_queue import image_queue
 from camera_manager_service.utils import send_api_request
 from camera_manager_service.config import host, app_key
 from camera_manager_service.signature import Signature
