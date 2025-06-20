@@ -14,7 +14,7 @@ class RecognitionRequest(BaseModel):
 
 @router.post("/recognize")
 def recognize_image(request: RecognitionRequest, fastapi_request: Request):
-    if not os.path.exists(request.image_path):
+    if not (request.image_path):
         return {"error": "Image path does not exist"}
 
     # ✅ Access the shared queue from app state

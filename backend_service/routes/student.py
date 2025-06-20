@@ -24,7 +24,7 @@ studentRouter = APIRouter()
 def get_students(db: Session = Depends(get_db)):
     return db.query(Student).all()
 
-@studentRouter.post("/add-student")
+@studentRouter.post("/register-student")
 def add_students(student: StudentCreate, db: Session = Depends(get_db)):
     degree = db.query(Programme).filter(Programme.name.ilike(student.degree_programme)).first()
 

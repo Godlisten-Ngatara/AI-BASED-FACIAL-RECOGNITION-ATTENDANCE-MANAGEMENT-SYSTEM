@@ -7,7 +7,7 @@ sys.path.append(
 from camera_manager_service.utils import send_api_request
 from camera_manager_service.config import host, app_key, secret_key
 from camera_manager_service.signature import Signature
-
+from backend_service.utilities.saveToCloudinary import upload_to_cloudinary
 # Modify this with your desired folder path later
 IMAGE_SAVE_DIR = os.path.abspath(
     os.path.join(
@@ -40,28 +40,35 @@ def send_image_path_to_recognition(filepath: str):
     except Exception as e:
         print(f"Error sending recognition request: {e}")
 
-
-# Function to save image to a folder with timestamped filename
-def save_image_to_folder(base64_image_data, folder_path):
+def save_image_to_cloudinary (base64_image_data):
     try:
         image_data = base64.b64decode(base64_image_data)
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"capture_{timestamp}.jpg"
-        filepath = os.path.join(folder_path, filename)
-        if filepath:
-            # image_queue.put(filepath)
-            # print(image_queue)
-            # print(f"Queued image for recognition: {filepath}")
-            with open(filepath, "wb") as f:
-                f.write(image_data)
-            print(f"Image saved to {filepath}")
-            # After saving the image, send the image path to recognition endpoint
-            send_image_path_to_recognition(filepath)
 
-        return filepath
+        with open(filename, "wb") as f:
+            f.write(image_data)
+
+        # Use passed public_id or generate one with timestamp
+        cloudinary_public_id = f"capture_{timestamp}"
+
+        cloudinary_url = upload_to_cloudinary(filename, public_id=cloudinary_public_id)
+
+        os.remove(filename)
+
+        if cloudinary_url:
+            print(f"Image uploaded to Cloudinary with public_id '{cloudinary_public_id}': {cloudinary_url}")
+            send_image_path_to_recognition(cloudinary_url)
+        else:
+            print("Failed to upload image to Cloudinary")
+
+        return cloudinary_url
+
     except Exception as e:
-        print(f"Failed to save image: {e}")
+        print(f"Error processing image: {e}")
         return None
+
 
 
 # Define camera Capture function
@@ -89,7 +96,7 @@ def cameraCapture():
             base64_str = data_uri.split(",")[1]  # Get image data after comma
 
             # Save image to folder
-            save_image_to_folder(base64_str, IMAGE_SAVE_DIR)
+            save_image_to_cloudinary(base64_str)
 
             return res
     except Exception as e:

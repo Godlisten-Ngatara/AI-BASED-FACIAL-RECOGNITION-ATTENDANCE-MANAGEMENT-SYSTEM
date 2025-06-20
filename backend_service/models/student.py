@@ -16,3 +16,4 @@ class Student(Base):
     year_of_study = Column(Integer)
     phone_number = Column(String)
     degree_programme = Column(Integer, ForeignKey(Programme.id))
+

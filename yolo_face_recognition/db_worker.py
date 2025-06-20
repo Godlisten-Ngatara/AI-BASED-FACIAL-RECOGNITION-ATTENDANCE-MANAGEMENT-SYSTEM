@@ -13,6 +13,7 @@ class DBWorker(Process):
     def mark_attendance(self, recognized_data: dict):
         recognized_faces = recognized_data.get("recognized_faces", [])
         timestamp = recognized_data.get("timestamp")
+        image = recognized_data.get("image")
 
         for face in recognized_faces:
             reg_no = face.get("name")
@@ -22,6 +23,7 @@ class DBWorker(Process):
             payload = {
                 "reg_no": reg_no,
                 "recorded_at": timestamp,
+                "image": image
             }
             try:
                 response = requests.post(self.api_url, json=payload)
