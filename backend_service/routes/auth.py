@@ -35,7 +35,7 @@ def signin_instructor(instructor: InstructorAuth, db: Session = Depends(get_db))
     # ✅ Create JWT token
     access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(
-        data={"sub": str(existing_user.id), "email": existing_user.email},  # You can include more claims here
+        data={"sub": str(existing_user.id), "email": existing_user.email, "name": existing_user.first_name},  # You can include more claims here
         expires_delta=access_token_expires
     )
 

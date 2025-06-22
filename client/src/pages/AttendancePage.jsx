@@ -3,6 +3,7 @@ import { Pencil, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import useFetch from "@/hooks/useFetch.js";
+import Spinner from "@/components/ui/spinner";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -10,7 +11,7 @@ const ITEMS_PER_PAGE = 10;
 const columns = [
   { key: "id", label: "ID" },
   { key: "regno", label: "Reg No" },
-  { key: "first_name", label: "Full Name" },
+  { key: "full_name", label: "Full Name" },
   { key: "programme_name", label: "Programme" },
   { key: "title", label: "Course" },
   { key: "year_of_study", label: "YoS" },
@@ -51,13 +52,13 @@ export default function AttendanceTable() {
   };
 
   console.log(data)
-  if (loading) return <p>Loading attendance...</p>;
+  if (loading) return <Spinner/>;
   if (error) return <p>Error loading data: {error.message}</p>;
   if (!data) return <p>No data found.</p>;
 
   return (
-    <Card className="p-4 overflow-x-auto">
-      <CardContent>
+    
+      <div>
         <table className="min-w-full table-auto border text-sm">
           <thead className="bg-gray-100">
             <tr>
@@ -124,7 +125,7 @@ export default function AttendanceTable() {
             Next
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    
   );
 }

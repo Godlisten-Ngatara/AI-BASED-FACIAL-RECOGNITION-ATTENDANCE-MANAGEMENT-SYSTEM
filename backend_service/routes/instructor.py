@@ -1,6 +1,8 @@
 import sys, os
 import traceback
 
+from backend_service.middleware.authMiddleware import verify_token
+
 sys.path.append(
     os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
 )
@@ -16,9 +18,44 @@ from backend_service.utilities.hashPassword import hash_password
 instructorRouter = APIRouter()
 
 
-@instructorRouter.get("/")
-def get_students(db: Session = Depends(get_db)):
-    return db.query(Instructor).all()
+from fastapi import HTTPException, status
+
+
+@instructorRouter.get("/{id}")
+def get_instructor(
+    id: int, db: Session = Depends(get_db), token_data: dict = Depends(verify_token)
+):
+    token_instructor_id = token_data.get("sub")
+
+    # Check if token contains instructor ID
+    if not token_instructor_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing instructor ID",
+        )
+
+    # Only allow access if the authenticated instructor matches the requested ID
+    if int(token_instructor_id) != id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view this instructor's data",
+        )
+
+    # ✅ Fetch instructor info from the database
+    instructor = db.query(Instructor).filter(Instructor.id == id).first()
+
+    if not instructor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found"
+        )
+
+    return {
+        "id": instructor.id,
+        "first_name": instructor.first_name,
+        "last_name": instructor.last_name,
+        "email": instructor.email,
+        # Add more fields if needed
+    }
 
 
 @instructorRouter.post("/register-instructor")
@@ -34,7 +71,7 @@ def add_instructors(instructor: InstructorCreate, db: Session = Depends(get_db))
             last_name=instructor.last_name,
             email=instructor.email,
             phone_number=instructor.phone_number,
-            password=hash_password(instructor.password)
+            password=hash_password(instructor.password),
         )
 
         db.add(new_instructor)
@@ -45,5 +82,7 @@ def add_instructors(instructor: InstructorCreate, db: Session = Depends(get_db))
     except SQLAlchemyError as e:
         db.rollback()
         print("Error details:", e)  # OR use logging
-        traceback.print_exc()       # This prints the full traceback to your terminal
-        raise HTTPException(status_code=500, detail="An error occurred while adding the Instructor.")
+        traceback.print_exc()  # This prints the full traceback to your terminal
+        raise HTTPException(
+            status_code=500, detail="An error occurred while adding the Instructor."
+        )

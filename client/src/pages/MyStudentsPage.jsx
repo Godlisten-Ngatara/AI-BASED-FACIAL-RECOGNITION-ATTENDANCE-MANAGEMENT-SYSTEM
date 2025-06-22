@@ -1,42 +1,130 @@
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import React, { useState } from "react";
+import { Pencil, Save, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import useFetch from "@/hooks/useFetch.js";
+import Spinner from "@/components/ui/spinner";
+const ITEMS_PER_PAGE = 10;
 
+// Column mapping: field → label
+const columns = [
+  { key: "id", label: "ID" },
+  { key: "full_name", label: "Full Name" },
+  { key: "regno", label: "Reg No" },
+  { key: "programme_name", label: "Programme" },
+  { key: "year_of_study", label: "YoS" },
+];
 export default function MyStudentsPage() {
-  const students = Array(10).fill({
-    name: "Godlisten Ngatara",
-    regNumber: "2021-04-0889",
-    programme: "Bsc.CEIT",
-    year: 4,
-  });
+  const { data, loading, error } = useFetch(
+    "http://localhost:8002/api/v1/courses"
+  );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingRow, setEditingRow] = useState(null);
+  const [formState, setFormState] = useState({});
 
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedData =
+    data?.data?.students?.slice(startIndex, startIndex + ITEMS_PER_PAGE) || [];
+  const totalPages = Math.ceil((data?.data?.students?.length || 0) / ITEMS_PER_PAGE);
+
+  const handleEdit = (row) => {
+    setEditingRow(row.id);
+    setFormState(row);
+  };
+
+  const handleCancel = () => {
+    setEditingRow(null);
+    setFormState({});
+  };
+
+  const handleSave = () => {
+    // This assumes you eventually add an API update call
+    setEditingRow(null);
+    setFormState({});
+  };
+
+  const handleChange = (e, field) => {
+    setFormState({ ...formState, [field]: e.target.value });
+  };
+
+  console.log(data);
+  if (loading) return <Spinner/>;
+  if (error) return <p>Error loading data: {error.message}</p>;
+  if (!data) return <p>No data found.</p>;
   return (
-    <div className="w-full bg-blue-50 min-h-screen p-6">
-   
-
-      <Card className="overflow-x-auto  p-0 rounded-none shadow-none border-none">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead className="bg-blue-800 text-white">
+    
+      <div>
+        <table className="min-w-full table-auto border text-sm">
+          <thead className="bg-gray-100">
             <tr>
-              <th className="text-left px-6 py-3 text-m font-semibold">Student Name</th>
-              <th className="text-left px-6 py-3 text-m font-semibold">Reg.Number</th>
-              <th className="text-center px-6 py-3 text-m font-semibold">Programme</th>
-              <th className="text-center px-6 py-3 text-m font-semibold">Year of Study</th>
+              {columns.map((col) => (
+                <th key={col.key} className="p-2 border">
+                  {col.label}
+                </th>
+              ))}
+              <th className="p-2 border">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-blue-50 text-blue-900 divide-y divide-blue-200">
-            {students.map((student, index) => (
-              <tr key={index}>
-                <td className="px-6 py-4 text-sm">{student.name}</td>
-                <td className="px-6 py-4 text-sm">{student.regNumber}</td>
-                <td className="px-6 py-4 text-sm text-center">{student.programme}</td>
-                <td className="px-6 py-4 text-sm text-center">{student.year}</td>
+          <tbody>
+            {paginatedData.map((row) => (
+              <tr key={row.id} className="text-center">
+                {columns.map(({ key }) => (
+                  <td key={key} className="p-2 border">
+                    {editingRow === row.id && key !== "id" ? (
+                      <input
+                        type="text"
+                        value={formState[key] || ""}
+                        onChange={(e) => handleChange(e, key)}
+                        className="w-full border rounded p-1"
+                      />
+                    ) : (
+                      row[key]
+                    )}
+                  </td>
+                ))}
+                <td className="p-2 border flex justify-center gap-2">
+                  {editingRow === row.id ? (
+                    <>
+                      <Button onClick={handleSave} size="icon">
+                        <Save size={16} />
+                      </Button>
+                      <Button
+                        onClick={handleCancel}
+                        variant="destructive"
+                        size="icon"
+                      >
+                        <X size={16} />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={() => handleEdit(row)} size="icon">
+                      <Pencil size={16} />
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </Card>
 
-    </div>
-  )
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </Button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    
+  );
 }

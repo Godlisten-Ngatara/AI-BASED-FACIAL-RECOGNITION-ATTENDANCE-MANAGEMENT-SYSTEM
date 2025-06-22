@@ -33,6 +33,7 @@ import MyStudentsPage from "./MyStudentsPage";
 import SettingsPage from "./SettingsPage";
 import AttendanceTable from "./AttendancePage";
 import CapturedImagesGallery from "./CapturedImagesPage";
+import image from "../assets/icons/image.png"
 const menuItems = [
   {
     id: "dashboard",
@@ -79,7 +80,7 @@ const menuItems = [
   {
     id: "images",
     label: "Captured Images",
-    icon: settings_icon,
+    icon: image,
     activeIcon: settings_icon_active,
   },
 ];
@@ -90,10 +91,11 @@ const getLabelById = (id) => {
 
 export default function MainPage() {
   const [active, setActive] = useState("dashboard");
-  const { user, selectedRole } = useAuth();
+  const { selectedRole } = useAuth();
   const storedRole = localStorage.getItem("selectedRole");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const first_name = user.name
   // Access role
-  const role = user?.role;
   const renderContent = () => {
     switch (active) {
       case "dashboard":
@@ -132,7 +134,7 @@ export default function MainPage() {
   const navigate = useNavigate();
   const handleLogout = () => {
     logout(); // Clear user context and localStorage
-    navigate("/"); // Redirect to login or home page
+    navigate("/login", { replace: true }); // Redirect to login or home page
   };
 
   // Filter menu items based on role
@@ -146,8 +148,7 @@ export default function MainPage() {
   return (
     <div className="flex min-h-screen font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#002366] text-white flex flex-col items-start px-4 ">
-        
+      <aside className="w-64 bg-[#002366] text-white lg:flex flex-col items-start px-4 hidden">
         <div className="fixed top-6">
           <img src={logo} alt="Logo" className="w-16 h-16 mb-6 mx-auto" />
           <h1 className="text-xl font-bold text-center w-full mb-8">
@@ -201,13 +202,12 @@ export default function MainPage() {
           <div className="flex justify-between items-center gap-2 text-blue-900">
             <img
               src={user_icon}
-              alt="Dr.Daudi"
               className="w-10 h-10 rounded-full"
             />
-            <h1>{storedRole == "student" ? "Godlisten" : "Dr.Daudi"}</h1>
+            <h1>{storedRole == "student" ? "Godlisten" : `Dr. ${first_name}`}</h1>
           </div>
         </div>
-        <div className="pt-6 pb-0 px-20">{renderContent()}</div>
+        <div className="pt-6 pb-0 px-4">{renderContent()}</div>
 
         {/* <footer className=" fixed bottom-0 right-0 w-full text-center text-sm text-white bg-[#002366] py-1">
           © 2025 All Rights Reserved

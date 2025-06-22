@@ -16,7 +16,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="instructor/login")
 def verify_token(token: str = Depends(oauth2_scheme)) -> dict:
     try:
         payload = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
-
+        print(payload)
         # Optionally validate expiration manually
         if payload.get("exp") and datetime.now(timezone.utc).timestamp() > payload["exp"]:
             raise HTTPException(
