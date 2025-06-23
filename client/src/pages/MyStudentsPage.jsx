@@ -15,9 +15,7 @@ const columns = [
   { key: "year_of_study", label: "YoS" },
 ];
 export default function MyStudentsPage() {
-  const { data, loading, error } = useFetch(
-    "http://localhost:8002/api/v1/courses"
-  );
+  const {data, error, loading} = useFetch("http://localhost:8002/api/v1/courses")
   const [currentPage, setCurrentPage] = useState(1);
   const [editingRow, setEditingRow] = useState(null);
   const [formState, setFormState] = useState({});
@@ -25,7 +23,7 @@ export default function MyStudentsPage() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedData =
     data?.data?.students?.slice(startIndex, startIndex + ITEMS_PER_PAGE) || [];
-  const totalPages = Math.ceil((data?.data?.students?.length || 0) / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil((data?.data?.students?.length || 1) / ITEMS_PER_PAGE);
 
   const handleEdit = (row) => {
     setEditingRow(row.id);
@@ -62,7 +60,6 @@ export default function MyStudentsPage() {
                   {col.label}
                 </th>
               ))}
-              <th className="p-2 border">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -82,26 +79,7 @@ export default function MyStudentsPage() {
                     )}
                   </td>
                 ))}
-                <td className="p-2 border flex justify-center gap-2">
-                  {editingRow === row.id ? (
-                    <>
-                      <Button onClick={handleSave} size="icon">
-                        <Save size={16} />
-                      </Button>
-                      <Button
-                        onClick={handleCancel}
-                        variant="destructive"
-                        size="icon"
-                      >
-                        <X size={16} />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button onClick={() => handleEdit(row)} size="icon">
-                      <Pencil size={16} />
-                    </Button>
-                  )}
-                </td>
+                
               </tr>
             ))}
           </tbody>

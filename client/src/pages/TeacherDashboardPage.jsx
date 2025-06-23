@@ -7,11 +7,13 @@ import graph2_icon from "../assets/icons/graph_2.png";
 import graph3_icon from "../assets/icons/graph_3.png";
 import useFetch from "@/hooks/useFetch";
 import AttendanceTrendChart from "@/components/ui/chart";
+import Spinner from "@/components/ui/spinner";
 export default function TeacherDashboardPage() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const first_name = user.name;
-  const { data } = useFetch("http://localhost:8002/api/v1/courses");
+  const { data, loading } = useFetch("http://localhost:8002/api/v1/courses");
   const total_students = data?.data?.students?.length ?? 0;
+   if (loading) return <Spinner/>;
   return (
     <>
       <Card className="bg-blue-900 text-white mb-6">

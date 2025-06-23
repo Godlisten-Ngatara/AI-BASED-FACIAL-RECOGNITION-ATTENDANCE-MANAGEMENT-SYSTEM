@@ -1,7 +1,7 @@
 import sys, os
 import json
 import calendar
-from backend_service.middleware.authMiddleware import verify_token
+from backend_service.middleware.authMiddleware import verify_instructor_token
 from backend_service.models.schedule import CourseShedule
 from backend_service.models.student import Student
 from backend_service.utilities.cache_handler import get_cache, set_cache
@@ -24,7 +24,7 @@ courseRouter = APIRouter()
 
 @courseRouter.get("/")
 def get_courses(
-    db: Session = Depends(get_db), token_data: dict = Depends(verify_token)
+    db: Session = Depends(get_db), token_data: dict = Depends(verify_instructor_token)
 ):
     instructor_id = token_data.get("sub")
 

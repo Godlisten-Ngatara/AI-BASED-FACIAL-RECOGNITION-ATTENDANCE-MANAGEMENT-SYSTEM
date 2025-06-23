@@ -1,7 +1,7 @@
 import sys, os
 import traceback
 
-from backend_service.middleware.authMiddleware import verify_token
+from backend_service.middleware.authMiddleware import verify_instructor_token
 
 sys.path.append(
     os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
@@ -23,7 +23,7 @@ from fastapi import HTTPException, status
 
 @instructorRouter.get("/{id}")
 def get_instructor(
-    id: int, db: Session = Depends(get_db), token_data: dict = Depends(verify_token)
+    id: int, db: Session = Depends(get_db), token_data: dict = Depends(verify_instructor_token)
 ):
     token_instructor_id = token_data.get("sub")
 

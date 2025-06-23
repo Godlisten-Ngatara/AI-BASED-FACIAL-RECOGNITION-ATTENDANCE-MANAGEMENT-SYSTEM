@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import logo from "../assets/udsm_logo.png";
 import user_icon from "../assets/icons/user.png";
@@ -7,15 +6,10 @@ import dashboard_icon_active from "../assets/icons/dashboard_active.png";
 import dashboard_icon from "../assets/icons/dashboard.png";
 import profile_icon from "../assets/icons/profile.png";
 import profile_icon_active from "../assets/icons/profile_active.png";
-import classes_icon from "../assets/icons/classes.png";
-import classes_icon_active from "../assets/icons/classes_active.png";
 import students_icon from "../assets/icons/students.png";
 import students_icon_active from "../assets/icons/students_active.png";
 import attendance_icon from "../assets/icons/attendance.png";
 import attendance_icon_active from "../assets/icons/attendance_active.png";
-import notifications_icon from "../assets/icons/notifications.png";
-import notifications_icon_active from "../assets/icons/notifications_active.png";
-import settings_icon from "../assets/icons/settings.png";
 import settings_icon_active from "../assets/icons/settings_active.png";
 import logout_icon from "../assets/icons/logout.png";
 import TeacherDashboardPage from "./TeacherDashboardPage";
@@ -26,67 +20,17 @@ import StudentProfilePage from "./StudentProfilePage";
 import TeacherNotificationPage from "./TeacherNotificationPage";
 import StudentNotificationPage from "./StudentNotificationPage";
 import { useAuth } from "@/auth/AuthContext";
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
 import MyStudentsPage from "./MyStudentsPage";
 import SettingsPage from "./SettingsPage";
 import AttendanceTable from "./AttendancePage";
 import CapturedImagesGallery from "./CapturedImagesPage";
-import image from "../assets/icons/image.png"
-const menuItems = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: dashboard_icon,
-    activeIcon: dashboard_icon_active,
-  },
-  {
-    id: "profile",
-    label: "My Profile",
-    icon: profile_icon,
-    activeIcon: profile_icon_active,
-  },
-  // {
-  //   id: "classes",
-  //   label: "My Classes",
-  //   icon: classes_icon,
-  //   activeIcon: classes_icon_active,
-  // },
-  {
-    id: "students",
-    label: "My Students",
-    icon: students_icon,
-    activeIcon: students_icon_active,
-  },
-  {
-    id: "attendance",
-    label: "Attendance Records",
-    icon: attendance_icon,
-    activeIcon: attendance_icon_active,
-  },
-  // {
-  //   id: "notifications",
-  //   label: "Notifications",
-  //   icon: notifications_icon,
-  //   activeIcon: notifications_icon_active,
-  // },
-  // {
-  //   id: "settings",
-  //   label: "Settings",
-  //   icon: settings_icon,
-  //   activeIcon: settings_icon_active,
-  // },
-  {
-    id: "images",
-    label: "Captured Images",
-    icon: image,
-    activeIcon: settings_icon_active,
-  },
-];
-const getLabelById = (id) => {
+import image from "../assets/icons/image.png";
+import useFetch from "@/hooks/useFetch";
+
+const getLabelById = (id, menuItems) => {
   const menuItem = menuItems.find((item) => item.id === id);
-  return menuItem ? menuItem.label : null; // Return label if found, else null
+  return menuItem ? menuItem.label : null;
 };
 
 export default function MainPage() {
@@ -94,8 +38,44 @@ export default function MainPage() {
   const { selectedRole } = useAuth();
   const storedRole = localStorage.getItem("selectedRole");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const first_name = user.name
-  // Access role
+  const first_name = user.name;
+  const menuItems = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: dashboard_icon,
+      activeIcon: dashboard_icon_active,
+    },
+    {
+      id: "profile",
+      label: "My Profile",
+      icon: profile_icon,
+      activeIcon: profile_icon_active,
+    },
+    {
+      id: "students",
+      label: "My Students",
+      icon: students_icon,
+      activeIcon: students_icon_active,
+    },
+    {
+      id: "attendance",
+      label: "Attendance Records",
+      icon: attendance_icon,
+      activeIcon: attendance_icon_active,
+    },
+    // ✅ Only show "Captured Images" if role is instructor
+    ...(storedRole === "instructor"
+      ? [
+          {
+            id: "images",
+            label: "Captured Images",
+            icon: image,
+            activeIcon: settings_icon_active,
+          },
+        ]
+      : []),
+  ];
   const renderContent = () => {
     switch (active) {
       case "dashboard":
@@ -189,7 +169,7 @@ export default function MainPage() {
       <main className="flex-1 bg-blue-50 ">
         <div className="flex justify-between items-center  pt-6 pb-0 px-20">
           <h2 className="text-2xl font-bold text-blue-900">
-            {getLabelById(active)}
+            {getLabelById(active, menuItems)}
           </h2>
 
           <div className="relative w-64">
@@ -200,11 +180,10 @@ export default function MainPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           </div>
           <div className="flex justify-between items-center gap-2 text-blue-900">
-            <img
-              src={user_icon}
-              className="w-10 h-10 rounded-full"
-            />
-            <h1>{storedRole == "student" ? "Godlisten" : `Dr. ${first_name}`}</h1>
+            <img src={user_icon} className="w-10 h-10 rounded-full" />
+            <h1>
+              {storedRole == "student" ? "Godlisten" : `Dr. ${first_name}`}
+            </h1>
           </div>
         </div>
         <div className="pt-6 pb-0 px-4">{renderContent()}</div>

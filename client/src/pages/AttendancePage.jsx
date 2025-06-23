@@ -20,16 +20,22 @@ const columns = [
 ];
 
 export default function AttendanceTable() {
-  const { data, loading, error } = useFetch(
-    "http://localhost:8002/api/v1/attendance"
-  );
+  const storedRole = localStorage.getItem("selectedRole"); // "instructor" or "student"
+
+  const endpoint =
+    storedRole === "instructor"
+      ? "http://localhost:8002/api/v1/attendance/instructor"
+      : "http://localhost:8002/api/v1/attendance/student";
+
+  const { data, error, loading } = useFetch(endpoint);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingRow, setEditingRow] = useState(null);
   const [formState, setFormState] = useState({});
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedData = data?.records?.slice(startIndex, startIndex + ITEMS_PER_PAGE) || [];
-  const totalPages = Math.ceil((data?.records?.length || 0) / ITEMS_PER_PAGE);
+  const paginatedData =
+    data?.records?.slice(startIndex, startIndex + ITEMS_PER_PAGE) || [];
+  const totalPages = Math.ceil((data?.records?.length || 1) / ITEMS_PER_PAGE);
 
   const handleEdit = (row) => {
     setEditingRow(row.id);
@@ -51,81 +57,83 @@ export default function AttendanceTable() {
     setFormState({ ...formState, [field]: e.target.value });
   };
 
-  console.log(data)
-  if (loading) return <Spinner/>;
+  console.log(data);
+  if (loading) return <Spinner />;
   if (error) return <p>Error loading data: {error.message}</p>;
   if (!data) return <p>No data found.</p>;
 
   return (
-    
-      <div>
-        <table className="min-w-full table-auto border text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              {columns.map((col) => (
-                <th key={col.key} className="p-2 border">
-                  {col.label}
-                </th>
-              ))}
-              <th className="p-2 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((row) => (
-              <tr key={row.id} className="text-center">
-                {columns.map(({ key }) => (
-                  <td key={key} className="p-2 border">
-                    {editingRow === row.id && key !== "id" ? (
-                      <input
-                        type="text"
-                        value={formState[key] || ""}
-                        onChange={(e) => handleChange(e, key)}
-                        className="w-full border rounded p-1"
-                      />
-                    ) : (
-                      row[key]
-                    )}
-                  </td>
-                ))}
-                <td className="p-2 border flex justify-center gap-2">
-                  {editingRow === row.id ? (
-                    <>
-                      <Button onClick={handleSave} size="icon">
-                        <Save size={16} />
-                      </Button>
-                      <Button onClick={handleCancel} variant="destructive" size="icon">
-                        <X size={16} />
-                      </Button>
-                    </>
+    <div>
+      <table className="min-w-full table-auto border text-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            {columns.map((col) => (
+              <th key={col.key} className="p-2 border">
+                {col.label}
+              </th>
+            ))}
+            <th className="p-2 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedData.map((row) => (
+            <tr key={row.id} className="text-center">
+              {columns.map(({ key }) => (
+                <td key={key} className="p-2 border">
+                  {editingRow === row.id && key !== "id" ? (
+                    <input
+                      type="text"
+                      value={formState[key] || ""}
+                      onChange={(e) => handleChange(e, key)}
+                      className="w-full border rounded p-1"
+                    />
                   ) : (
-                    <Button onClick={() => handleEdit(row)} size="icon">
-                      <Pencil size={16} />
-                    </Button>
+                    row[key]
                   )}
                 </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              ))}
+              <td className="p-2 border flex justify-center gap-2">
+                {editingRow === row.id ? (
+                  <>
+                    <Button onClick={handleSave} size="icon">
+                      <Save size={16} />
+                    </Button>
+                    <Button
+                      onClick={handleCancel}
+                      variant="destructive"
+                      size="icon"
+                    >
+                      <X size={16} />
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => handleEdit(row)} size="icon">
+                    <Pencil size={16} />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-        <div className="flex justify-between items-center mt-4">
-          <Button
-            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Prev
-          </Button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
+      <div className="flex justify-between items-center mt-4">
+        <Button
+          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+          disabled={currentPage === 1}
+        >
+          Prev
+        </Button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
       </div>
-    
+    </div>
   );
 }

@@ -14,7 +14,7 @@ from backend_service.models.student import Student
 from backend_service.models.attendance import Attendance
 from backend_service.schemas.attendance import AttendanceCreate
 from backend_service.models.schedule import CourseShedule
-from backend_service.middleware.authMiddleware import verify_token
+from backend_service.middleware.authMiddleware import verify_instructor_token, verify_student_token
 from backend_service.models.course import Course
 from backend_service.models.programme import Programme
 
@@ -24,9 +24,9 @@ attendanceRouter = APIRouter()
 from sqlalchemy import func, literal
 
 
-@attendanceRouter.get("/")
+@attendanceRouter.get("/instructor")
 def get_attendance(
-    db: Session = Depends(get_db), token_data: dict = Depends(verify_token)
+    db: Session = Depends(get_db), token_data: dict = Depends(verify_instructor_token)
 ):
     instructor_id = token_data["sub"]
     if not instructor_id:
@@ -46,6 +46,7 @@ def get_attendance(
             Course.title,
             Student.year_of_study,
             Attendance.recorded_date,
+            Attendance.recorded_time,
             Attendance.status,
             Attendance.captured_image,
         )
@@ -58,6 +59,63 @@ def get_attendance(
 
     return {"records": [row._asdict() for row in results]}
 
+@attendanceRouter.get("/student")
+def get_student_attendance(
+    db: Session = Depends(get_db), token_data: dict = Depends(verify_student_token)
+):
+    student_id = token_data["sub"]
+    if not student_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user ID",
+        )
+
+    results = (
+        db.query(
+            Attendance.id,
+            Student.regno,
+            func.concat_ws(
+                " ", Student.first_name, Student.middle_name, Student.last_name
+            ).label("full_name"),
+            Programme.name.label("programme_name"),
+            Course.title,
+            Student.year_of_study,
+            Attendance.recorded_date,
+            Attendance.recorded_time,
+            Attendance.status,
+        )
+        .join(Student, Attendance.student_id == Student.id)
+        .join(Programme, Student.degree_programme == Programme.id)
+        .join(Course, Attendance.course_id == Course.id)
+        .filter(Student.id == int(student_id))
+        .all()
+    )
+
+    return {"records": [row._asdict() for row in results]}
+# @attendanceRouter.get("/captured-images")
+# def get_attendance(
+#     db: Session = Depends(get_db), token_data: dict = Depends(verify_instructor_token)
+# ):
+#     instructor_id = token_data["sub"]
+#     if not instructor_id:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Invalid token: missing user ID",
+#         )
+
+#     results = (
+#         db.query(
+#             Attendance.id,
+#             Student.regno,
+#             Attendance.recorded_date,
+#             Attendance.captured_image,
+#         )
+#         .join(Student, Attendance.student_id == Student.id)
+#         .filter(Course.instructor_id == int(instructor_id))
+#         .all()
+#     )
+
+#     return {"records": [row._asdict() for row in results]}
 
 @attendanceRouter.post("/mark-attendance")
 def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
