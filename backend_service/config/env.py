@@ -14,5 +14,10 @@ ALGORITHM = os.getenv("ALGORITHM")
 
 EXPIRE_TIME = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 
+REDIS_HOST = os.getenv("REDIS_HOST")
+
+REDIS_PORT = int(os.getenv("REDIS_PORT"))
+
+REDIS_DB = int(os.getenv("REDIS_DB"))
 
 

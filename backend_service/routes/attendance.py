@@ -1,4 +1,5 @@
 import base64
+import json
 import os, sys
 import traceback
 
@@ -14,9 +15,13 @@ from backend_service.models.student import Student
 from backend_service.models.attendance import Attendance
 from backend_service.schemas.attendance import AttendanceCreate
 from backend_service.models.schedule import CourseShedule
-from backend_service.middleware.authMiddleware import verify_instructor_token, verify_student_token
+from backend_service.middleware.authMiddleware import (
+    verify_instructor_token,
+    verify_student_token,
+)
 from backend_service.models.course import Course
 from backend_service.models.programme import Programme
+from backend_service.config.redis_app import redis_client
 
 attendanceRouter = APIRouter()
 
@@ -59,6 +64,7 @@ def get_attendance(
 
     return {"records": [row._asdict() for row in results]}
 
+
 @attendanceRouter.get("/student")
 def get_student_attendance(
     db: Session = Depends(get_db), token_data: dict = Depends(verify_student_token)
@@ -92,6 +98,8 @@ def get_student_attendance(
     )
 
     return {"records": [row._asdict() for row in results]}
+
+
 # @attendanceRouter.get("/captured-images")
 # def get_attendance(
 #     db: Session = Depends(get_db), token_data: dict = Depends(verify_instructor_token)
@@ -117,18 +125,20 @@ def get_student_attendance(
 
 #     return {"records": [row._asdict() for row in results]}
 
+
 @attendanceRouter.post("/mark-attendance")
 def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
+    # Step 1: Lookup student
     student = db.query(Student).filter_by(regno=data.reg_no).first()
-
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
+    # Step 2: Find active course at that timestamp
     timestamp = data.recorded_at
     day_of_week = timestamp.weekday()
     current_time = timestamp.time()
 
-    current_course = (
+    schedule = (
         db.query(CourseShedule)
         .filter(
             CourseShedule.day_of_week == day_of_week,
@@ -137,36 +147,29 @@ def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
         )
         .first()
     )
-    if not current_course:
-        raise HTTPException(status_code=404, detail="No course scheduled at this time")
+    if not schedule:
+        raise HTTPException(status_code=404, detail="No class scheduled at this time")
 
-    try:
-        new_attendance = Attendance(
-            student_id=student.id,
-            course_id=current_course.course_id,
-            status="present",
-            recorded_date=data.recorded_at.date(),
-            recorded_time=data.recorded_at.time(),
-            captured_image=data.image,
-        )
+    course_id = schedule.course_id
+    student_id = str(student.id)
+    cache_key = f"attendance:{course_id}:{timestamp.date()}"
 
-        db.add(new_attendance)
-        db.commit()
-        db.refresh(new_attendance)
+    # Step 3: Fetch from Redis
+    cached_data = redis_client.hget(cache_key, student_id)
+    if not cached_data:
+        raise HTTPException(status_code=404, detail="Student not found in cache")
 
-        return {"message": "Attendance recorded successfully", "data": new_attendance}
+    # Step 4: Update the cached record
+    attendance = json.loads(cached_data)
+    attendance["status"] = "present"
+    attendance["recorded_time"] = timestamp.time().isoformat()
+    attendance["captured_image"] = data.image
 
-    except IntegrityError as e:
-        db.rollback()
-        if "unique" in str(e).lower():
-            return {"message": "Duplicate attendance ignored"}
-        else:
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail="Database error")
+    # Step 5: Save it back to Redis
+    redis_client.hset(cache_key, student_id, json.dumps(attendance))
 
-    except Exception as e:
-        db.rollback()
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail="An error occurred while marking attendance."
-        )
+    return {
+        "message": "Attendance updated in cache",
+        "student_id": student_id,
+        "course_id": course_id,
+    }

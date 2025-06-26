@@ -4,7 +4,7 @@ from datetime import datetime
 sys.path.append(
     os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
 )
-from camera_manager_service.utils import send_api_request
+from camera_manager_service.utils.send_request import send_api_request
 from camera_manager_service.config import host, app_key, secret_key
 from camera_manager_service.signature import Signature
 from backend_service.utilities.saveToCloudinary import upload_to_cloudinary

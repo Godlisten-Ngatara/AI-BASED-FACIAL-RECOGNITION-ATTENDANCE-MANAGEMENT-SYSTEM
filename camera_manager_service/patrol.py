@@ -5,16 +5,14 @@ import sys
 sys.path.append(
     os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
 )
-from camera_manager_service.utils import send_api_request
+
+from camera_manager_service.utils.send_request import send_api_request
 from camera_manager_service.config import host, app_key
 from camera_manager_service.signature import Signature
-from cameraCapture import (
-    cameraCapture,
-)  # Import your existing capture function
+from cameraCapture import cameraCapture  # Import your existing capture function
 
-RUN_DURATION = 15 * 60  # 15 minutes in seconds
-
-start_time = time.time()
+# Set patrol run duration to 5 minutes (for testing)
+RUN_DURATION = 10 * 60  # 5 minutes in seconds
 
 
 def move_to_preset(camera_index_code: str, preset_index: int):
@@ -34,31 +32,53 @@ def move_to_preset(camera_index_code: str, preset_index: int):
         "X-Ca-Key": app_key,
         "X-Ca-Signature": signature.calc_signature(),
     }
-    print(f"Moving to preset {preset_index}...")
+
+    print(f"[Camera] Moving to preset {preset_index}...")
     res = send_api_request(target_url, req_body, headers)
     if res:
-        print(f"Moved to preset {preset_index}.")
+        print(f"[Camera] Moved to preset {preset_index}.")
     else:
-        print(f"Failed to move to preset {preset_index}.")
+        print(f"[Camera] Failed to move to preset {preset_index}.")
 
+
+CAPTURE_INTERVAL = 600  # 10 minutes in seconds
 
 def patrol_with_capture(camera_index_code: str, patrol_schedule: list):
+    print("[System] Starting patrol at intervals...")
+
     while True:
+        patrol_start_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[Cycle Start] Patrol cycle started at {patrol_start_time}")
+
         try:
             for step in patrol_schedule:
                 preset = step["preset"]
                 dwell_time = step["dwell"]
+
                 move_to_preset(camera_index_code, preset)
-                print(f"Dwelling at preset {preset} for {dwell_time} seconds...")
-                time.sleep(dwell_time)  # simulate dwell time
-                print(f"Capturing image at preset {preset}...")
-                cameraCapture()  # call your capture function here
+                print(f"[Patrol] Dwelling at preset {preset} for {dwell_time} seconds...")
+                time.sleep(dwell_time)
+
+                print(f"[Capture] Capturing image at preset {preset}...")
+                cameraCapture()
+
         except Exception as e:
-            print(f"PTZ error: {e}")
-    print(f"Patrol stopped after {RUN_DURATION}")
+            print(f"[Error] PTZ patrol error: {e}")
+
+        print(f"[Cycle End] Sleeping for {CAPTURE_INTERVAL} seconds before next patrol...\n")
+        time.sleep(CAPTURE_INTERVAL)
 
 
-# Define your patrol schedule (customize as needed)
 
-# Run the patrol
-# optional pause before restarting the whole patrol
+# Example patrol schedule for testing
+# You can modify this as needed
+test_patrol_schedule = [
+    {"preset": 1, "dwell": 5},
+    {"preset": 2, "dwell": 5},
+    {"preset": 3, "dwell": 5},
+]
+
+# Example usage
+if __name__ == "__main__":
+    camera_index_code = 1
+    patrol_with_capture(camera_index_code, test_patrol_schedule)

@@ -19,7 +19,7 @@ def get_cache(key: str) -> Optional[Any]:
     if key in _cache:
         value, expiry = _cache[key]
         if time.time() < expiry:
-            return value
+            return key, value
         else:
             del _cache[key]  # Clean expired entry
     return None

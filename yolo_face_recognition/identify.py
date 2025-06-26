@@ -55,7 +55,7 @@ def recognize_faces_in_image(image_path: str):
     results_data = {
         "timestamp": datetime.now().isoformat(),
         "recognized_faces": [],
-        "image": image_path
+        "image": image_path,
     }
 
     for result in results:
@@ -70,7 +70,9 @@ def recognize_faces_in_image(image_path: str):
                 rgb_crop = convert_bgr_to_rgb(person_crop)
 
                 face_locations = face_recognition.face_locations(rgb_crop)
-                face_encodings = face_recognition.face_encodings(rgb_crop, face_locations)
+                face_encodings = face_recognition.face_encodings(
+                    rgb_crop, face_locations
+                )
 
                 if not face_encodings:
                     print(f"[!] No faces detected in {image_path}")
@@ -78,8 +80,10 @@ def recognize_faces_in_image(image_path: str):
 
                 for encoding in face_encodings:
                     name = identify_face(encoding, known_encodings, known_names)
-                    results_data["recognized_faces"].append({
-                        "name": name,
-                    })
+                    results_data["recognized_faces"].append(
+                        {
+                            "name": name,
+                        }
+                    )
 
     return results_data

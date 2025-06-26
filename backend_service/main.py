@@ -12,6 +12,7 @@ from backend_service.routes.instructor import instructorRouter
 from backend_service.routes.programme import programmeRouter
 from backend_service.routes.course import courseRouter
 from backend_service.routes.auth import authRouter
+from backend_service.routes.redis_test import cacheRouter
 app = FastAPI()
 
 origins = [
@@ -29,6 +30,8 @@ app.add_middleware(
 @app.get("/api/v1/")
 def read_root():
     return {"message": "Attendance backend is running!"}
+
+app.include_router(cacheRouter)
 
 app.include_router(authRouter, prefix="/api/v1/auth")
 

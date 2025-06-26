@@ -7,7 +7,7 @@ import Spinner from "@/components/ui/spinner";
 
 export default function CapturedImagesGallery() {
   const { data, error, loading } = useFetch(
-    "http://localhost:8002/api/v1/attendance"
+    "http://localhost:8002/api/v1/attendance/instructor"
   );
   const [startDate, setStartDate] = useState(subDays(new Date(), 7));
   const [endDate, setEndDate] = useState(new Date());
