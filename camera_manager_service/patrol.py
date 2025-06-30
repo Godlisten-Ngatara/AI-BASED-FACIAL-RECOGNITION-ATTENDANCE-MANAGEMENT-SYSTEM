@@ -41,7 +41,7 @@ def move_to_preset(camera_index_code: str, preset_index: int):
         print(f"[Camera] Failed to move to preset {preset_index}.")
 
 
-CAPTURE_INTERVAL = 600  # 10 minutes in seconds
+CAPTURE_INTERVAL = 60  # 10 minutes in seconds
 
 def patrol_with_capture(camera_index_code: str, patrol_schedule: list):
     print("[System] Starting patrol at intervals...")
@@ -68,17 +68,3 @@ def patrol_with_capture(camera_index_code: str, patrol_schedule: list):
         print(f"[Cycle End] Sleeping for {CAPTURE_INTERVAL} seconds before next patrol...\n")
         time.sleep(CAPTURE_INTERVAL)
 
-
-
-# Example patrol schedule for testing
-# You can modify this as needed
-test_patrol_schedule = [
-    {"preset": 1, "dwell": 5},
-    {"preset": 2, "dwell": 5},
-    {"preset": 3, "dwell": 5},
-]
-
-# Example usage
-if __name__ == "__main__":
-    camera_index_code = 1
-    patrol_with_capture(camera_index_code, test_patrol_schedule)

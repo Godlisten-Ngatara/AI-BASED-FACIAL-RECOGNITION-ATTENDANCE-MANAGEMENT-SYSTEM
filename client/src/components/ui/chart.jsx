@@ -11,7 +11,7 @@ import {
 import { useMemo } from "react";
 
 export default function AttendanceTrendChart() {
-  const { data } = useFetch("http://localhost:8002/api/v1/attendance");
+  const { data } = useFetch("http://localhost:8002/api/v1/attendance/instructor");
 
   // Prepare chart data
   const chart_data = useMemo(() => {
@@ -26,7 +26,7 @@ export default function AttendanceTrendChart() {
       }
 
       grouped[date].total += 1;
-      if (record.status === "present") {
+      if (record.status === "present" || record.status === "late") {
         grouped[date].present += 1;
       }
     });

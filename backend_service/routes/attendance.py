@@ -126,6 +126,53 @@ def get_student_attendance(
 #     return {"records": [row._asdict() for row in results]}
 
 
+# @attendanceRouter.post("/mark-attendance")
+# def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
+#     # Step 1: Lookup student
+#     student = db.query(Student).filter_by(regno=data.reg_no).first()
+#     if not student:
+#         raise HTTPException(status_code=404, detail="Student not found")
+
+#     # Step 2: Find active course at that timestamp
+#     timestamp = data.recorded_at
+#     day_of_week = timestamp.weekday()
+#     current_time = timestamp.time()
+
+#     schedule = (
+#         db.query(CourseShedule)
+#         .filter(
+#             CourseShedule.day_of_week == day_of_week,
+#             CourseShedule.start_at <= current_time,
+#             CourseShedule.end_at >= current_time,
+#         )
+#         .first()
+#     )
+#     if not schedule:
+#         raise HTTPException(status_code=404, detail="No class scheduled at this time")
+
+#     course_id = schedule.course_id
+#     student_id = str(student.id)
+#     cache_key = f"attendance:{course_id}:{timestamp.date()}"
+
+#     # Step 3: Fetch from Redis
+#     cached_data = redis_client.hget(cache_key, student_id)
+#     if not cached_data:
+#         raise HTTPException(status_code=404, detail="Student not found in cache")
+
+#     # Step 4: Update the cached record
+#     attendance = json.loads(cached_data)
+#     attendance["status"] = "present"
+#     attendance["recorded_time"] = timestamp.time().isoformat()
+#     attendance["captured_image"] = data.image
+
+#     # Step 5: Save it back to Redis
+#     redis_client.hset(cache_key, student_id, json.dumps(attendance))
+
+#     return {
+#         "message": "Attendance updated in cache",
+#         "student_id": student_id,
+#         "course_id": course_id,
+#     }
 @attendanceRouter.post("/mark-attendance")
 def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
     # Step 1: Lookup student
@@ -156,20 +203,45 @@ def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
 
     # Step 3: Fetch from Redis
     cached_data = redis_client.hget(cache_key, student_id)
-    if not cached_data:
-        raise HTTPException(status_code=404, detail="Student not found in cache")
 
-    # Step 4: Update the cached record
-    attendance = json.loads(cached_data)
-    attendance["status"] = "present"
-    attendance["recorded_time"] = timestamp.time().isoformat()
-    attendance["captured_image"] = data.image
+    if cached_data:
+        attendance = json.loads(cached_data)
+        attendance["count"] = attendance.get("count", 0) + 1
 
-    # Step 5: Save it back to Redis
+        # Update first_seen and last_seen
+        current_time_iso = current_time.isoformat()
+        first_seen = attendance.get("first_seen")
+        if not first_seen or current_time_iso < first_seen:
+            attendance["first_seen"] = current_time_iso
+        last_seen = attendance.get("last_seen")
+        if not last_seen or current_time_iso > last_seen:
+            attendance["last_seen"] = current_time_iso
+
+        # Update timestamps list (optional: limit size)
+        timestamps = attendance.get("timestamps", [])
+        timestamps.append(current_time_iso)
+        attendance["timestamps"] = timestamps[-10:]  # keep last 10
+
+        # Optionally update captured_images list (base64 or path)
+        images = attendance.get("captured_images", [])
+        images.append(data.image)
+        attendance["captured_images"] = images[-10:]  # keep last 10
+    else:
+        # First recognition for this student today
+        current_time_iso = current_time.isoformat()
+        attendance = {
+            "count": 1,
+            "first_seen": current_time_iso,
+            "last_seen": current_time_iso,
+            "timestamps": [current_time_iso],
+            "captured_images": [data.image]
+        }
+
+    # Step 4: Save it back to Redis
     redis_client.hset(cache_key, student_id, json.dumps(attendance))
 
     return {
-        "message": "Attendance updated in cache",
+        "message": "Attendance data updated in cache",
         "student_id": student_id,
         "course_id": course_id,
     }

@@ -1,4 +1,3 @@
-# tasks/cache.py
 import logging, os, sys
 from celery import shared_task
 
@@ -17,7 +16,6 @@ from datetime import date
 logger = logging.getLogger(__name__)
 
 
-
 def cache_expected_attendees(course_id):
     print(f"[Cache] Task started for course {course_id}")
     db = SessionLocal()
@@ -33,6 +31,9 @@ def cache_expected_attendees(course_id):
         # Check if already cached
         if redis_client.exists(cache_key):
             print(f"[Cache] Course {course_id} already cached today.")
+            cached_data = redis_client.hgetall(cache_key)
+            print(f"[Cache] Redis contains {len(cached_data)} entries")
+            print(json.dumps(cached_data, indent=2))
             return
 
         students = (
@@ -51,11 +52,14 @@ def cache_expected_attendees(course_id):
         value = {
             str(student.id): json.dumps(
                 {
-                    "status": "absent",
+                    "status": "absent",  # Final status remains default for now
                     "course_id": course_id,
                     "recorded_date": today.isoformat(),
-                    "recorded_time": None,
-                    "captured_image": None,
+                    "count": 0,
+                    "first_seen": None,
+                    "last_seen": None,
+                    "timestamps": [],
+                    "captured_images": [],
                 }
             )
             for student in students
@@ -76,3 +80,6 @@ def cache_expected_attendees(course_id):
         logger.error(f"[Cache] Error caching attendees for course {course_id}: {e}")
     finally:
         db.close()
+
+if __name__ == "__main__":
+    cache_expected_attendees(4)

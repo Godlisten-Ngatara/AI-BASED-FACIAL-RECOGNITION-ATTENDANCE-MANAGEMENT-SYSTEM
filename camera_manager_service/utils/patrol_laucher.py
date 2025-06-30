@@ -4,6 +4,7 @@ import time, os, sys
 import traceback
 
 from backend_service.tasks.attendance_finalizer import finalize_attendance
+from backend_service.tasks.cache_schedules import cache_expected_course_schedules
 
 
 sys.path.append(
@@ -25,9 +26,10 @@ def start_patrol():
             args=(
                 "1",
                 [
-                    {"preset": 1, "dwell": 5},
-                    {"preset": 2, "dwell": 6},
-                    {"preset": 3, "dwell": 4},
+                    {"preset": 1, "dwell": 15},
+                    {"preset": 2, "dwell": 15},
+                    {"preset": 3, "dwell": 15},
+                    {"preset": 4, "dwell": 15},
                 ],
             ),
         )
@@ -36,11 +38,20 @@ def start_patrol():
     else:
         print("[Patrol] Patrol already running.")
 
+def stop_patrol():
+    global patrol_process
+    if patrol_process and patrol_process.is_alive():
+        patrol_process.terminate()
+        patrol_process.join()
+        patrol_process = None
+        print("[Patrol] Patrol stopped.")
+
 
 class ScheduleChecker:
     def __init__(self):
         self._cached_courses_today = set()
         self._finalized_courses_today = set()
+        self._cached_sessions_today = set()
         self._last_cache_date = None
 
     def run(self):
@@ -60,6 +71,9 @@ class ScheduleChecker:
                     if course_id not in self._cached_courses_today:
                         cache_expected_attendees(course_id)
                         self._cached_courses_today.add(course_id)
+                    if course_id not in self._cached_sessions_today:
+                        cache_expected_course_schedules(course_id)
+                        self._cached_sessions_today.add(course_id)
                     start_patrol()
 
                 elif status == "ended":
@@ -68,7 +82,7 @@ class ScheduleChecker:
                     if course_id not in self._finalized_courses_today:
                         finalize_attendance(course_id)
                         self._finalized_courses_today.add(course_id)
-
+                    stop_patrol()
                 else:
                     print("[📭] No class currently or recently.")
 

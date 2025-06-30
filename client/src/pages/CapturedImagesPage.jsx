@@ -15,15 +15,19 @@ export default function CapturedImagesGallery() {
   const records = data?.records || [];
 
   const filteredImages = useMemo(() => {
-    return records.filter(({ recorded_date }) => {
-      const time = parseISO(recorded_date);
-      return (
-        (isAfter(time, startDate) ||
-          format(time, "yyyy-MM-dd") === format(startDate, "yyyy-MM-dd")) &&
-        (isBefore(time, endDate) ||
-          format(time, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd"))
-      );
-    });
+    return records.filter(
+      ({ recorded_date, recorded_time, captured_image }) => {
+        if (!recorded_date || !recorded_time || !captured_image) return false;
+
+        const time = parseISO(recorded_date);
+        return (
+          (isAfter(time, startDate) ||
+            format(time, "yyyy-MM-dd") === format(startDate, "yyyy-MM-dd")) &&
+          (isBefore(time, endDate) ||
+            format(time, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd"))
+        );
+      }
+    );
   }, [startDate, endDate, records]);
 
   if (loading) return <Spinner />;
@@ -94,10 +98,14 @@ export default function CapturedImagesGallery() {
               <div className="p-2 bg-gray-50 text-center text-sm text-gray-700">
                 <div className="text-xs">{record.title}</div>
                 <div className="text-xs text-gray-500">
-                  {format(
-                    parseISO(`${record.recorded_date}T${record.recorded_time}`),
-                    "PPP p"
-                  )}
+                  {record.recorded_date && record.recorded_time
+                    ? format(
+                        parseISO(
+                          `${record.recorded_date}T${record.recorded_time}`
+                        ),
+                        "PPP p"
+                      )
+                    : "Invalid date"}
                 </div>
               </div>
             </div>

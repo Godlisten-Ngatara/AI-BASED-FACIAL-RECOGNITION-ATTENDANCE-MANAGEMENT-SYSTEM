@@ -1,5 +1,6 @@
 from queue import Queue
 from datetime import datetime
+import re
 import cv2
 import face_recognition
 import os
@@ -51,9 +52,18 @@ def recognize_faces_in_image(image_path: str):
     print(f"[*] Processing: {os.path.basename(image_path)}")
 
     results = model(image)
-
+    # Extract timestamp from image filename (if URL has the expected format)
+    timestamp_match = re.search(r'capture_(\d{8})_(\d{6})', image_path)
+    if timestamp_match:
+        date_part = timestamp_match.group(1)  # '20250626'
+        time_part = timestamp_match.group(2)  # '171434'
+        timestamp_str = f"{date_part}{time_part}"
+        timestamp = datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+    else:
+    # Fallback to current time if not matched
+        timestamp = datetime.now()
     results_data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": timestamp.isoformat(),
         "recognized_faces": [],
         "image": image_path,
     }

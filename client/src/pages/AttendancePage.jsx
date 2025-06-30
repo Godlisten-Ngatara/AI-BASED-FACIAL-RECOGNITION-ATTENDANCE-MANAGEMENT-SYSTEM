@@ -1,13 +1,14 @@
-import React, { useState } from "react";
-import { Pencil, Save, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import DatePicker from "react-datepicker";
+import { Pencil, Save, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import useFetch from "@/hooks/useFetch.js";
 import Spinner from "@/components/ui/spinner";
+import handleDownloadCSV from "@/hooks/useDownload";
 
 const ITEMS_PER_PAGE = 10;
 
-// Column mapping: field → label
 const columns = [
   { key: "id", label: "ID" },
   { key: "regno", label: "Reg No" },
@@ -20,7 +21,7 @@ const columns = [
 ];
 
 export default function AttendanceTable() {
-  const storedRole = localStorage.getItem("selectedRole"); // "instructor" or "student"
+  const storedRole = localStorage.getItem("selectedRole");
 
   const endpoint =
     storedRole === "instructor"
@@ -31,11 +32,25 @@ export default function AttendanceTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingRow, setEditingRow] = useState(null);
   const [formState, setFormState] = useState({});
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  // Filter records based on date range
+  const filteredData =
+    data?.records?.filter((rec) => {
+      const recordDate = new Date(rec.recorded_date);
+      return (
+        (!startDate || recordDate >= startDate) &&
+        (!endDate || recordDate <= endDate)
+      );
+    }) || [];
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedData =
-    data?.records?.slice(startIndex, startIndex + ITEMS_PER_PAGE) || [];
-  const totalPages = Math.ceil((data?.records?.length || 1) / ITEMS_PER_PAGE);
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE
+  );
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
 
   const handleEdit = (row) => {
     setEditingRow(row.id);
@@ -48,7 +63,6 @@ export default function AttendanceTable() {
   };
 
   const handleSave = () => {
-    // This assumes you eventually add an API update call
     setEditingRow(null);
     setFormState({});
   };
@@ -57,13 +71,77 @@ export default function AttendanceTable() {
     setFormState({ ...formState, [field]: e.target.value });
   };
 
-  console.log(data);
+  useEffect(() => {
+    if (data?.records?.length) {
+      const dates = data.records
+        .map((rec) => new Date(rec.recorded_date))
+        .filter((d) => !isNaN(d));
+
+      if (dates.length > 0) {
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+        setStartDate(minDate);
+        setEndDate(maxDate);
+      }
+    }
+  }, [data]);
+
   if (loading) return <Spinner />;
   if (error) return <p>Error loading data: {error.message}</p>;
   if (!data) return <p>No data found.</p>;
 
   return (
     <div>
+      <div className="mb-2">Filter by date:</div>
+      <div className="w-full flex justify-between items-center gap-4 mb-2">
+        <div className="flex gap-x-2">
+          <DatePicker
+            id="start-date"
+            selected={startDate}
+            onChange={(date) => {
+              setStartDate(date);
+              setCurrentPage(1);
+            }}
+            selectsStart
+            startDate={startDate}
+            endDate={endDate}
+            maxDate={endDate}
+            className="border rounded px-3 py-2 border-gray-800"
+          />
+          <DatePicker
+            selected={endDate}
+            onChange={(date) => {
+              setEndDate(date);
+              setCurrentPage(1);
+            }}
+            selectsEnd
+            startDate={startDate}
+            endDate={endDate}
+            minDate={startDate}
+            className="border rounded px-3 py-2 border-gray-800"
+          />
+        </div>
+
+        {storedRole === "instructor" && (
+          <div className="relative w-64">
+            <Input
+              placeholder="Search Here"
+              className="w-64 rounded-full border-gray-800 pl-10"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          </div>
+        )}
+
+        <div>
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+            onClick={() => handleDownloadCSV(filteredData, columns)}
+          >
+            Download CSV
+          </Button>
+        </div>
+      </div>
+
       <table className="min-w-full table-auto border text-sm">
         <thead className="bg-gray-100">
           <tr>
@@ -72,7 +150,9 @@ export default function AttendanceTable() {
                 {col.label}
               </th>
             ))}
-            <th className="p-2 border">Actions</th>
+            {storedRole === "instructor" && (
+              <th className="p-2 border">Actions</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -80,7 +160,9 @@ export default function AttendanceTable() {
             <tr key={row.id} className="text-center">
               {columns.map(({ key }) => (
                 <td key={key} className="p-2 border">
-                  {editingRow === row.id && key !== "id" ? (
+                  {editingRow === row.id &&
+                  storedRole === "instructor" &&
+                  key !== "id" ? (
                     <input
                       type="text"
                       value={formState[key] || ""}
@@ -92,26 +174,28 @@ export default function AttendanceTable() {
                   )}
                 </td>
               ))}
-              <td className="p-2 border flex justify-center gap-2">
-                {editingRow === row.id ? (
-                  <>
-                    <Button onClick={handleSave} size="icon">
-                      <Save size={16} />
+              {storedRole === "instructor" && (
+                <td className="p-2 border flex justify-center gap-2">
+                  {editingRow === row.id ? (
+                    <>
+                      <Button onClick={handleSave} size="icon">
+                        <Save size={16} />
+                      </Button>
+                      <Button
+                        onClick={handleCancel}
+                        variant="destructive"
+                        size="icon"
+                      >
+                        <X size={16} />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={() => handleEdit(row)} size="icon">
+                      <Pencil size={16} />
                     </Button>
-                    <Button
-                      onClick={handleCancel}
-                      variant="destructive"
-                      size="icon"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </>
-                ) : (
-                  <Button onClick={() => handleEdit(row)} size="icon">
-                    <Pencil size={16} />
-                  </Button>
-                )}
-              </td>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -125,7 +209,7 @@ export default function AttendanceTable() {
           Prev
         </Button>
         <span>
-          Page {currentPage} of {totalPages}
+          Page {currentPage} of {totalPages || 1}
         </span>
         <Button
           onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}

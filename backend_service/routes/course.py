@@ -1,9 +1,13 @@
+from collections import defaultdict
+from datetime import date
 import sys, os
 import json
 import calendar
 from backend_service.middleware.authMiddleware import verify_instructor_token
+from backend_service.models.attendance import Attendance
 from backend_service.models.schedule import CourseShedule
 from backend_service.models.student import Student
+from backend_service.schemas.session import SessionOverrideRequest
 from backend_service.utilities.cache_handler import get_cache, set_cache
 
 sys.path.append(
@@ -18,13 +22,14 @@ from backend_service.models.programme import Programme
 from backend_service.schemas.course import CourseCreate
 from backend_service.models.instructor import Instructor
 from backend_service.utilities.getFullName import split_name
-
+from backend_service.config.redis_app import redis_client
 courseRouter = APIRouter()
 
 
 @courseRouter.get("/")
 def get_courses(
-    db: Session = Depends(get_db), token_data: dict = Depends(verify_instructor_token)
+    db: Session = Depends(get_db),
+    token_data: dict = Depends(verify_instructor_token),
 ):
     instructor_id = token_data.get("sub")
 
@@ -33,14 +38,8 @@ def get_courses(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token: missing user ID",
         )
-    # caching the response
-    cache_key = f"instructor_course_{instructor_id}"
-    cached_data = get_cache(cache_key)
 
-    if cached_data:
-        print(cached_data)
-        return cached_data
-    # Fetch courses assigned to instructor
+    # Step 1: Fetch the course assigned to the instructor
     course = (
         db.query(
             Course.id.label("course_id"),
@@ -57,20 +56,20 @@ def get_courses(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found for instructor")
 
-    # Get course schedules
-
+    # Step 2: Fetch the scheduled days of the course
     schedules = (
         db.query(CourseShedule.day_of_week)
         .filter(CourseShedule.course_id == course.course_id)
         .all()
     )
+    schedule_list = [calendar.day_name[s.day_of_week] for s in schedules]
 
-    # Get students in same programme and year
+    # Step 3: Fetch students in the same programme and year
     students = (
         db.query(
             Student.id,
             Student.first_name,
-            Student.middle_name,  # include if available
+            Student.middle_name,
             Student.last_name,
             Student.regno,
             Student.year_of_study,
@@ -85,17 +84,36 @@ def get_courses(
         .all()
     )
 
-    # Convert to list of days
-    schedule_list = [calendar.day_name[s.day_of_week] for s in schedules]
+    # Step 4: Fetch all attendance records for the course
+    attendance_data = (
+        db.query(
+            Attendance.student_id,
+            Attendance.recorded_date,
+            Attendance.recorded_time,
+            Attendance.status,
+            Attendance.captured_image,
+        )
+        .filter(Attendance.course_id == course.course_id)
+        .all()
+    )
 
-    # Build response with full_name
+    # Step 5: Group attendance records by student_id
+    attendance_by_student = defaultdict(list)
+    for a in attendance_data:
+        attendance_by_student[a.student_id].append({
+            "status": a.status,
+        })
+
+    # Step 6: Build student list with attendance
     student_list = []
     for s in students:
         full_name = " ".join(filter(None, [s.first_name, s.middle_name, s.last_name]))
         student_dict = s._asdict()
         student_dict["full_name"] = full_name
+        student_dict["attendance"] = attendance_by_student.get(s.id, [])
         student_list.append(student_dict)
 
+    # Final response structure
     result = {
         "data": {
             "course": {
@@ -109,7 +127,7 @@ def get_courses(
             "scheduled_at": schedule_list,
         }
     }
-    set_cache(cache_key, result, ttl=300)
+
     return result
 
 
@@ -149,4 +167,42 @@ def add_course(course: CourseCreate, db: Session = Depends(get_db)):
             "title": new_course.title,
             "course_code": new_course.course_code,
         },
+    }
+
+@courseRouter.patch("/{course_id}/session-adjustment")
+def session_override(course_id: str, payload: SessionOverrideRequest, db: Session = Depends(get_db)):
+    today = date.today()
+    day_of_week = today.weekday()
+
+    # Validate course exists
+    course = db.query(Course).filter_by(id=course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Confirm course is scheduled today
+    session = (
+        db.query(CourseShedule)
+        .filter_by(course_id=course_id, day_of_week=day_of_week)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="No scheduled session for today")
+
+    cache_key = f"session:{course_id}:{today}"
+    override_value = {
+        str(session.id): json.dumps({
+            "start_at": payload.start_at.isoformat(),
+            "end_at": payload.end_at.isoformat(),
+            "is_canceled": payload.is_canceled
+        })
+    }
+
+    # Cache the override
+    redis_client.hset(cache_key, mapping=override_value)
+
+    return {
+        "message": "Session override cached successfully",
+        "course_id": course_id,
+        "date": today.isoformat(),
+        "override": override_value
     }
