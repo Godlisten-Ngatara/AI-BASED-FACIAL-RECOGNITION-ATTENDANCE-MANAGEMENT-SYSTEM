@@ -11,24 +11,34 @@ export default function CapturedImagesGallery() {
   );
   const [startDate, setStartDate] = useState(subDays(new Date(), 7));
   const [endDate, setEndDate] = useState(new Date());
+  const [selectedCourse, setSelectedCourse] = useState("All");
 
   const records = data?.records || [];
 
+  const courseOptions = useMemo(() => {
+    const titles = records.map((r) => r.title).filter(Boolean);
+    return ["All", ...Array.from(new Set(titles))];
+  }, [records]);
+
   const filteredImages = useMemo(() => {
     return records.filter(
-      ({ recorded_date, recorded_time, captured_image }) => {
+      ({ recorded_date, recorded_time, captured_image, title }) => {
         if (!recorded_date || !recorded_time || !captured_image) return false;
 
         const time = parseISO(recorded_date);
-        return (
+        const dateInRange =
           (isAfter(time, startDate) ||
             format(time, "yyyy-MM-dd") === format(startDate, "yyyy-MM-dd")) &&
           (isBefore(time, endDate) ||
-            format(time, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd"))
-        );
+            format(time, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd"));
+
+        const courseMatches =
+          selectedCourse === "All" || title === selectedCourse;
+
+        return dateInRange && courseMatches;
       }
     );
-  }, [startDate, endDate, records]);
+  }, [startDate, endDate, records, selectedCourse]);
 
   if (loading) return <Spinner />;
   if (error)
@@ -76,6 +86,26 @@ export default function CapturedImagesGallery() {
             className="border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-400"
           />
         </div>
+      </div>
+      <div className="mb-2">
+        <label
+          className="block text-sm font-medium mb-1"
+          htmlFor="course-filter"
+        >
+          Course
+        </label>
+        <select
+          id="course-filter"
+          value={selectedCourse}
+          onChange={(e) => setSelectedCourse(e.target.value)}
+          className="border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-400"
+        >
+          {courseOptions.map((title) => (
+            <option key={title} value={title}>
+              {title}
+            </option>
+          ))}
+        </select>
       </div>
 
       {filteredImages.length === 0 ? (

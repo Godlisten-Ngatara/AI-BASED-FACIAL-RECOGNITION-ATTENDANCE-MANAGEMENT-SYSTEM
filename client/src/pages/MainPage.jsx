@@ -35,6 +35,9 @@ const getLabelById = (id, menuItems) => {
 
 export default function MainPage() {
   const [active, setActive] = useState("dashboard");
+  const { data, loading, error } = useFetch(
+    "http://localhost:8002/api/v1/courses"
+  );
   const { selectedRole } = useAuth();
   const storedRole = localStorage.getItem("selectedRole");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -91,7 +94,7 @@ export default function MainPage() {
           <TeacherProfilePage />
         );
       case "attendance":
-        return <AttendanceTable />;
+        return <AttendanceTable data={data} loading={loading} error={error} />;
       case "notifications":
         return storedRole == "student" ? (
           <StudentNotificationPage />
@@ -99,7 +102,7 @@ export default function MainPage() {
           <TeacherNotificationPage />
         );
       case "students":
-        return <MyStudentsPage />;
+        return <MyStudentsPage data={data} loading={loading} error={error} />;
       case "settings":
         return <SettingsPage />;
       case "images":
@@ -172,7 +175,6 @@ export default function MainPage() {
             {getLabelById(active, menuItems)}
           </h2>
 
-          
           <div className="flex justify-between items-center gap-2 text-blue-900">
             <img src={user_icon} className="w-10 h-10 rounded-full" />
             <h1>

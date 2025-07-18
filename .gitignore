@@ -3,3 +3,4 @@ venv/
 **.yml
 **/.env
 yolo_face_recognition/dataset/
+**/.jpg

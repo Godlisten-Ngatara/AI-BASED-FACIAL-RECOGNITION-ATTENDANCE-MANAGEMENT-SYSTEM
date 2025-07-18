@@ -7,7 +7,7 @@ sys.path.append(
 )
 
 from camera_manager_service.utils.send_request import send_api_request
-from camera_manager_service.config import host, app_key
+from camera_manager_service.config import host, app_key, secret_key
 from camera_manager_service.signature import Signature
 from cameraCapture import cameraCapture  # Import your existing capture function
 
@@ -19,6 +19,7 @@ def move_to_preset(camera_index_code: str, preset_index: int):
     path = "/artemis/api/video/v1/ptzs/controlling"
     target_url = f"{host}{path}"
     signature = Signature()
+    sign_string = signature.create_signature_string(path)
     req_body = {
         "cameraIndexCode": camera_index_code,
         "command": "GOTO_PRESET",
@@ -30,11 +31,13 @@ def move_to_preset(camera_index_code: str, preset_index: int):
         "Accept": "application/json",
         "Content-Type": "application/json;charset=UTF-8",
         "X-Ca-Key": app_key,
+        "X-Ca-Secret": secret_key,
         "X-Ca-Signature": signature.calc_signature(),
     }
 
     print(f"[Camera] Moving to preset {preset_index}...")
     res = send_api_request(target_url, req_body, headers)
+    print(res)
     if res:
         print(f"[Camera] Moved to preset {preset_index}.")
     else:

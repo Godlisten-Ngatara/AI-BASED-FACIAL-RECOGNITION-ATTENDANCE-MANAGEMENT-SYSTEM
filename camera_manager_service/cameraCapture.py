@@ -90,6 +90,7 @@ def cameraCapture():
 
     try:
         res = send_api_request(target_url, req_body, headers)
+        print(res)
         if res and "data" in res:
             print("Raw data:", res["data"])
             data_uri = res["data"]

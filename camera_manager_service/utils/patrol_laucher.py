@@ -24,12 +24,13 @@ def start_patrol():
         patrol_process = Process(
             target=patrol_with_capture,
             args=(
-                "1",
+                "2",
                 [
-                    {"preset": 1, "dwell": 15},
-                    {"preset": 2, "dwell": 15},
-                    {"preset": 3, "dwell": 15},
-                    {"preset": 4, "dwell": 15},
+                    {"preset": 1, "dwell": 5},
+                    {"preset": 2, "dwell": 5},
+                    {"preset": 3, "dwell": 5},
+                    {"preset": 4, "dwell": 5},
+                    {"preset": 5, "dwell": 5},
                 ],
             ),
         )

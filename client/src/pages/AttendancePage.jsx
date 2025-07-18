@@ -10,7 +10,7 @@ import handleDownloadCSV from "@/hooks/useDownload";
 const ITEMS_PER_PAGE = 10;
 
 const columns = [
-  { key: "id", label: "ID" },
+  { key: "seq", label: "ID" }, // sequential ID
   { key: "regno", label: "Reg No" },
   { key: "full_name", label: "Full Name" },
   { key: "programme_name", label: "Programme" },
@@ -34,15 +34,28 @@ export default function AttendanceTable() {
   const [formState, setFormState] = useState({});
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const courseOptions = data?.courses || [];
 
   // Filter records based on date range
   const filteredData =
     data?.records?.filter((rec) => {
       const recordDate = new Date(rec.recorded_date);
-      return (
+      const isDateInRange =
         (!startDate || recordDate >= startDate) &&
-        (!endDate || recordDate <= endDate)
-      );
+        (!endDate || recordDate <= endDate);
+
+      const matchesCourse = !selectedCourse || rec.title === selectedCourse;
+
+      const searchMatch = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !searchMatch ||
+        rec.regno.toLowerCase().includes(searchMatch) ||
+        rec.full_name.toLowerCase().includes(searchMatch);
+
+      return isDateInRange && matchesCourse && matchesSearch;
     }) || [];
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -93,7 +106,7 @@ export default function AttendanceTable() {
   return (
     <div>
       <div className="mb-2">Filter by date:</div>
-      <div className="w-full flex justify-between items-center gap-4 mb-2">
+      <div className="w-full flex flex-wrap justify-between items-center gap-4 mb-2">
         <div className="flex gap-x-2">
           <DatePicker
             id="start-date"
@@ -121,11 +134,33 @@ export default function AttendanceTable() {
             className="border rounded px-3 py-2 border-gray-800"
           />
         </div>
-
+        {/* {storedRole === "instructor" && (
+          
+        )} */}
+        <select
+          value={selectedCourse}
+          onChange={(e) => {
+            setSelectedCourse(e.target.value);
+            setCurrentPage(1); // reset pagination when filter changes
+          }}
+          className="border rounded px-3 py-2 border-gray-800"
+        >
+          <option value="">All Courses</option>
+          {courseOptions.map((course) => (
+            <option key={course.id} value={course.title}>
+              {course.title}
+            </option>
+          ))}
+        </select>
         {storedRole === "instructor" && (
           <div className="relative w-64">
             <Input
-              placeholder="Search Here"
+              placeholder="Search by Reg No or Name"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1); // reset to page 1 on new search
+              }}
               className="w-64 rounded-full border-gray-800 pl-10"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -150,54 +185,60 @@ export default function AttendanceTable() {
                 {col.label}
               </th>
             ))}
-            {storedRole === "instructor" && (
+            {/* {storedRole === "instructor" && (
               <th className="p-2 border">Actions</th>
-            )}
+            )} */}
           </tr>
         </thead>
         <tbody>
-          {paginatedData.map((row) => (
-            <tr key={row.id} className="text-center">
-              {columns.map(({ key }) => (
-                <td key={key} className="p-2 border">
-                  {editingRow === row.id &&
-                  storedRole === "instructor" &&
-                  key !== "id" ? (
-                    <input
-                      type="text"
-                      value={formState[key] || ""}
-                      onChange={(e) => handleChange(e, key)}
-                      className="w-full border rounded p-1"
-                    />
-                  ) : (
-                    row[key]
-                  )}
-                </td>
-              ))}
-              {storedRole === "instructor" && (
-                <td className="p-2 border flex justify-center gap-2">
-                  {editingRow === row.id ? (
-                    <>
-                      <Button onClick={handleSave} size="icon">
-                        <Save size={16} />
+          {paginatedData.map((row, index) => {
+            const sequentialId = startIndex + index + 1;
+            return (
+              <tr key={sequentialId} className="text-center">
+                {columns.map(({ key }) => (
+                  <td key={key} className="p-2 border">
+                    {key === "seq" ? (
+                      sequentialId
+                    ) : editingRow === row.id &&
+                      storedRole === "instructor" &&
+                      key !== "id" ? (
+                      <input
+                        type="text"
+                        value={formState[key] || ""}
+                        onChange={(e) => handleChange(e, key)}
+                        className="w-full border rounded p-1"
+                      />
+                    ) : (
+                      row[key]
+                    )}
+                  </td>
+                ))}
+
+                {/* {storedRole === "instructor" && (
+                  <td className="p-2 border flex justify-center gap-2">
+                    {editingRow === row.id ? (
+                      <>
+                        <Button onClick={handleSave} size="icon">
+                          <Save size={16} />
+                        </Button>
+                        <Button
+                          onClick={handleCancel}
+                          variant="destructive"
+                          size="icon"
+                        >
+                          <X size={16} />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button onClick={() => handleEdit(row)} size="icon">
+                        <Pencil size={16} />
                       </Button>
-                      <Button
-                        onClick={handleCancel}
-                        variant="destructive"
-                        size="icon"
-                      >
-                        <X size={16} />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button onClick={() => handleEdit(row)} size="icon">
-                      <Pencil size={16} />
-                    </Button>
-                  )}
-                </td>
-              )}
-            </tr>
-          ))}
+                    )}
+                  </td>
+                )} */}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

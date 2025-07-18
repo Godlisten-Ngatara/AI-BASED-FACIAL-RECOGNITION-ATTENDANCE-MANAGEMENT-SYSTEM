@@ -1,3 +1,4 @@
+from datetime import datetime
 from multiprocessing import Process, Queue
 import time
 
@@ -8,7 +9,6 @@ class DBWorker(Process):
         super().__init__()
         self.result_queue = result_queue
         self.api_url = "http://127.0.0.1:8002/api/v1/attendance/mark-attendance"
-        self._running = True
 
     def mark_attendance(self, recognized_data: dict):
         recognized_faces = recognized_data.get("recognized_faces", [])
@@ -25,26 +25,28 @@ class DBWorker(Process):
                 "recorded_at": timestamp,
                 "image": image
             }
+
             try:
                 response = requests.post(self.api_url, json=payload)
                 if response.status_code == 200:
-                    print(f"[DBWorker] Marked attendance for {reg_no}")
+                    print(f"[{datetime.now()}] ✅ Marked attendance for {reg_no}")
                 else:
-                    print(f"[DBWorker] Failed for {reg_no}: {response.status_code} - {response.text}")
+                    print(f"[{datetime.now()}] ❌ Failed for {reg_no}: {response.status_code} - {response.text}")
             except requests.RequestException as e:
-                print(f"[DBWorker] Error sending request for {reg_no}: {e}")
+                print(f"[{datetime.now()}] ⚠️ Request error for {reg_no}: {e}")
 
     def run(self):
-        while self._running:
-            result = self.result_queue.get()
-            if result is None:
-                # None is a signal to stop the process gracefully
-                self._running = False
-                break
-            
+        print(f"[{datetime.now()}] DBWorker started.")
+        while True:
             try:
-                self.mark_attendance(result)
-            except Exception as e:
-                print(f"Error marking attendance: {e}")
+                result = self.result_queue.get(timeout=10)
 
-        print("DBWorker shutting down gracefully.")
+                if result is None:
+                    print(f"[{datetime.now()}] Shutdown signal received. DBWorker exiting.")
+                    break
+
+                self.mark_attendance(result)
+
+            except Exception as e:
+                print(f"[{datetime.now()}] 🔥 Unexpected error in DBWorker: {e}")
+

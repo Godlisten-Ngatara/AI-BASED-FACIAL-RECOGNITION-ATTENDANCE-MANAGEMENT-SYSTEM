@@ -74,4 +74,4 @@ def finalize_attendance(course_id: int):
 
 
 if __name__ == "__main__":
-    finalize_attendance(4)
+    finalize_attendance(2)

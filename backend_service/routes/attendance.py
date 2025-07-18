@@ -40,7 +40,8 @@ def get_attendance(
             detail="Invalid token: missing user ID",
         )
 
-    results = (
+    # Fetch attendance records
+    attendance_records = (
         db.query(
             Attendance.id,
             Student.regno,
@@ -48,6 +49,7 @@ def get_attendance(
                 " ", Student.first_name, Student.middle_name, Student.last_name
             ).label("full_name"),
             Programme.name.label("programme_name"),
+            Course.id,
             Course.title,
             Student.year_of_study,
             Attendance.recorded_date,
@@ -62,7 +64,18 @@ def get_attendance(
         .all()
     )
 
-    return {"records": [row._asdict() for row in results]}
+    # Fetch courses taught by instructor
+    courses = (
+        db.query(Course.id, Course.title, Course.course_code)
+        .filter(Course.instructor_id == int(instructor_id))
+        .all()
+    )
+
+    return {
+        "records": [row._asdict() for row in attendance_records],
+        "courses": [course._asdict() for course in courses],
+    }
+
 
 
 @attendanceRouter.get("/student")
@@ -76,7 +89,10 @@ def get_student_attendance(
             detail="Invalid token: missing user ID",
         )
 
-    results = (
+    student = db.query(Student).filter(Student.id == int(student_id)).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    attendance_results = (
         db.query(
             Attendance.id,
             Student.regno,
@@ -97,7 +113,19 @@ def get_student_attendance(
         .all()
     )
 
-    return {"records": [row._asdict() for row in results]}
+    course_results = (
+        db.query(Course.id, Course.title, Course.course_code)
+        .filter(
+            Course.degree_programme_id == student.degree_programme,
+            Course.year_of_study == student.year_of_study
+        )
+        .all()
+    )
+
+    return {
+        "records": [row._asdict() for row in attendance_results],
+        "courses": [course._asdict() for course in course_results],
+    }
 
 
 # @attendanceRouter.get("/captured-images")
@@ -168,6 +196,7 @@ def get_student_attendance(
 #     # Step 5: Save it back to Redis
 #     redis_client.hset(cache_key, student_id, json.dumps(attendance))
 
+
 #     return {
 #         "message": "Attendance updated in cache",
 #         "student_id": student_id,
@@ -203,41 +232,48 @@ def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
 
     # Step 3: Fetch from Redis
     cached_data = redis_client.hget(cache_key, student_id)
+    current_timestamp_iso = timestamp.isoformat()  # use full timestamp including time
 
     if cached_data:
         attendance = json.loads(cached_data)
-        attendance["count"] = attendance.get("count", 0) + 1
+        recorded_timestamps = attendance.get("timestamps", [])
 
-        # Update first_seen and last_seen
-        current_time_iso = current_time.isoformat()
-        first_seen = attendance.get("first_seen")
-        if not first_seen or current_time_iso < first_seen:
-            attendance["first_seen"] = current_time_iso
-        last_seen = attendance.get("last_seen")
-        if not last_seen or current_time_iso > last_seen:
-            attendance["last_seen"] = current_time_iso
+        # Prevent duplicate entries for exact same timestamp
+        if current_timestamp_iso not in recorded_timestamps:
+            attendance["count"] = attendance.get("count", 0) + 1
 
-        # Update timestamps list (optional: limit size)
-        timestamps = attendance.get("timestamps", [])
-        timestamps.append(current_time_iso)
-        attendance["timestamps"] = timestamps[-10:]  # keep last 10
+            # Update first_seen and last_seen (based on recorded_at)
+            if (
+                not attendance.get("first_seen")
+                or current_timestamp_iso < attendance["first_seen"]
+            ):
+                attendance["first_seen"] = current_timestamp_iso
+            if (
+                not attendance.get("last_seen")
+                or current_timestamp_iso > attendance["last_seen"]
+            ):
+                attendance["last_seen"] = current_timestamp_iso
 
-        # Optionally update captured_images list (base64 or path)
-        images = attendance.get("captured_images", [])
-        images.append(data.image)
-        attendance["captured_images"] = images[-10:]  # keep last 10
+            # Update timestamps
+            recorded_timestamps.append(current_timestamp_iso)
+            attendance["timestamps"] = recorded_timestamps[-10:]  # keep last 10
+
+            # Update captured_images
+            images = attendance.get("captured_images", [])
+            images.append(data.image)
+            attendance["captured_images"] = images[-10:]  # keep last 10
+        # else: do nothing (already recorded for this exact timestamp)
     else:
-        # First recognition for this student today
-        current_time_iso = current_time.isoformat()
+        # First time seen today
         attendance = {
             "count": 1,
-            "first_seen": current_time_iso,
-            "last_seen": current_time_iso,
-            "timestamps": [current_time_iso],
-            "captured_images": [data.image]
+            "first_seen": current_timestamp_iso,
+            "last_seen": current_timestamp_iso,
+            "timestamps": [current_timestamp_iso],
+            "captured_images": [data.image],
         }
 
-    # Step 4: Save it back to Redis
+    # Step 4: Save back to Redis
     redis_client.hset(cache_key, student_id, json.dumps(attendance))
 
     return {

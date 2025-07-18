@@ -10,16 +10,19 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 
-export default function AttendanceTrendChart() {
-  const { data } = useFetch("http://localhost:8002/api/v1/attendance/instructor");
+export default function AttendanceTrendChart({ courseId }) {
+  const { data } = useFetch(
+    "http://localhost:8002/api/v1/attendance/instructor"
+  );
 
-  // Prepare chart data
   const chart_data = useMemo(() => {
-    if (!data?.records) return [];
+    if (!data?.records || !courseId) return [];
+
+    const filtered = data?.records?.filter((r) => String(r.id) === String(courseId));
 
     const grouped = {};
 
-    data.records.forEach((record) => {
+    filtered.forEach((record) => {
       const date = record.recorded_date;
       if (!grouped[date]) {
         grouped[date] = { present: 0, total: 0 };
@@ -31,18 +34,17 @@ export default function AttendanceTrendChart() {
       }
     });
 
-    // Convert and sort by date descending
     const sorted = Object.entries(grouped)
       .map(([date, { present, total }]) => ({
         date,
         attendance: Math.round((present / total) * 100),
       }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // newest first
-      .slice(0, 5) // take latest 5
-      .reverse(); // optional: show oldest to newest left to right
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5)
+      .reverse();
 
     return sorted;
-  }, [data]);
+  }, [data, courseId]);
 
   return (
     <div className="w-full h-96">

@@ -1,7 +1,5 @@
 import logging, os, json, sys
 
-from backend_service.models.schedule import CourseShedule
-
 sys.path.append(
     os.path.abspath(r"h:\code\AI-BASED FACIAL RECOGNITION ATTENDANCE MANAGEMENT SYSTEM")
 )
@@ -9,6 +7,7 @@ from backend_service.config.db import SessionLocal
 from backend_service.models.course import Course
 from backend_service.config.redis_app import redis_client
 from backend_service.models.student import Student
+from backend_service.models.schedule import CourseShedule
 from datetime import date
 
 logger = logging.getLogger(__name__)
@@ -59,3 +58,6 @@ def cache_expected_course_schedules(course_id):
         logger.error(f"[Cache] Error caching session schedule for course {course_id}: {e}")
     finally:
         db.close()
+
+if __name__ == "__main__":
+    cache_expected_course_schedules(1)
